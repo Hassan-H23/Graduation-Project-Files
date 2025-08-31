@@ -2,6 +2,7 @@
 """
 MediaPipe Face Landmark Detector (w8a8 quantized) for Raspberry Pi Zero 2 W
 Optimized implementation with 468 facial landmarks using quantized model
+Fixed version that handles set_num_threads compatibility issues
 """
 
 import cv2
@@ -96,9 +97,25 @@ class FaceLandmarkDetectorW8A8:
         
         print(f"Loading model: {model_path}")
         
-        # Initialize interpreter
-        self.interpreter = Interpreter(model_path=model_path)
-        self.interpreter.set_num_threads(num_threads)
+        # Initialize interpreter with optional num_threads support
+        try:
+            # Try the full constructor with num_threads (newer versions)
+            self.interpreter = Interpreter(model_path=model_path, num_threads=num_threads)
+            print(f"Interpreter initialized with {num_threads} threads")
+        except TypeError:
+            # Fall back to basic constructor
+            self.interpreter = Interpreter(model_path=model_path)
+            print("Interpreter initialized (single-threaded mode)")
+            
+            # Try to set threads separately if method exists
+            if hasattr(self.interpreter, 'set_num_threads'):
+                try:
+                    self.interpreter.set_num_threads(num_threads)
+                    print(f"Set to use {num_threads} threads")
+                except Exception as e:
+                    print(f"Note: Could not set thread count: {e}")
+        
+        # Allocate tensors
         self.interpreter.allocate_tensors()
         
         # Get input and output details
